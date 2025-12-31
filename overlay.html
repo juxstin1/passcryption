@@ -305,8 +305,8 @@
           </div>
           <div class="result-actions">
             <button class="action-btn" onclick="copyUsername(${i})" title="Copy username">👤</button>
-            <button class="action-btn" onclick="typePassword(passwords[${i}])" title="Type password">⌨️</button>
-            <button class="action-btn primary" onclick="copyPassword(passwords[${i}])" title="Copy password">📋</button>
+            <button class="action-btn" onclick="typePassword(filteredPasswords[${i}])" title="Type password">⌨️</button>
+            <button class="action-btn primary" onclick="copyPassword(filteredPasswords[${i}])" title="Copy password">📋</button>
           </div>
         </div>
       `).join('');

@@ -191,6 +191,21 @@ function savePasswords(passwords) {
   }
 }
 
+function scheduleClipboardClear(copiedText) {
+  const { clipboardClearTime = 0 } = loadSettings();
+  const clearSeconds = Number(clipboardClearTime);
+
+  if (!Number.isFinite(clearSeconds) || clearSeconds <= 0) {
+    return;
+  }
+
+  setTimeout(() => {
+    if (clipboard.readText() === copiedText) {
+      clipboard.clear();
+    }
+  }, clearSeconds * 1000);
+}
+
 // IPC Handlers
 ipcMain.handle('get-passwords', async () => {
   return loadPasswords();
@@ -222,6 +237,7 @@ ipcMain.handle('delete-password', async (event, id) => {
 
 ipcMain.handle('copy-to-clipboard', async (event, text) => {
   clipboard.writeText(text);
+  scheduleClipboardClear(text);
   return true;
 });
 
@@ -236,21 +252,22 @@ ipcMain.handle('generate-password', async (event, options) => {
   } = options;
 
   let charset = '';
+  const hasSymbols = includeSymbols && typeof allowedSymbols === 'string' && allowedSymbols.length > 0;
+
   if (includeLowercase) charset += 'abcdefghijklmnopqrstuvwxyz';
   if (includeUppercase) charset += 'ABCDEFGHIJKLMNOPQRSTUVWXYZ';
   if (includeNumbers) charset += '0123456789';
-  if (includeSymbols) charset += allowedSymbols;
+  if (hasSymbols) charset += allowedSymbols;
 
   if (charset.length === 0) {
     charset = 'abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789';
   }
 
   let password = '';
-  const array = new Uint32Array(length);
-  require('crypto').getRandomValues(array);
+  const randomBytes = crypto.randomBytes(length);
 
   for (let i = 0; i < length; i++) {
-    password += charset[array[i] % charset.length];
+    password += charset[randomBytes[i] % charset.length];
   }
 
   // Cryptographically secure random index helper
@@ -275,8 +292,11 @@ ipcMain.handle('generate-password', async (event, options) => {
     const chars = '0123456789';
     finalPassword[position++] = chars[secureRandomIndex(chars.length)];
   }
-  if (includeSymbols && !new RegExp(`[${allowedSymbols.replace(/[-[\]{}()*+?.,\\^$|#\s]/g, '\\$&')}]`).test(password)) {
-    finalPassword[position++] = allowedSymbols[secureRandomIndex(allowedSymbols.length)];
+  if (hasSymbols) {
+    const symbolRegex = new RegExp(`[${allowedSymbols.replace(/[-[\]{}()*+?.,\\^$|#\s]/g, '\\$&')}]`);
+    if (!symbolRegex.test(password)) {
+      finalPassword[position++] = allowedSymbols[secureRandomIndex(allowedSymbols.length)];
+    }
   }
 
   // Cryptographically secure Fisher-Yates shuffle
@@ -330,12 +350,14 @@ ipcMain.handle('overlay-get-passwords', async () => {
 
 ipcMain.handle('overlay-copy-password', async (event, password) => {
   clipboard.writeText(password);
+  scheduleClipboardClear(password);
   hideOverlay();
   return true;
 });
 
 ipcMain.handle('overlay-copy-username', async (event, username) => {
   clipboard.writeText(username);
+  scheduleClipboardClear(username);
   return true;
 });
 
@@ -368,6 +390,7 @@ ipcMain.handle('overlay-type-password', async (event, password) => {
         console.error('Auto-type error:', error);
         // Fallback: just copy to clipboard
         clipboard.writeText(password);
+        scheduleClipboardClear(password);
         resolve(false);
       } else {
         resolve(true);
