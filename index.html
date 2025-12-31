@@ -1,0 +1,288 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'">
+  <title>QuickPass - Password Manager</title>
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+  <div class="app-container">
+    <!-- Sidebar Navigation -->
+    <nav class="sidebar">
+      <div class="logo">
+        <span class="logo-icon">🔐</span>
+        <span class="logo-text">QuickPass</span>
+      </div>
+      <ul class="nav-menu">
+        <li class="nav-item active" data-view="list">
+          <span class="nav-icon">📋</span>
+          <span>My Logins</span>
+        </li>
+        <li class="nav-item" data-view="create">
+          <span class="nav-icon">➕</span>
+          <span>New Login</span>
+        </li>
+        <li class="nav-item" data-view="settings">
+          <span class="nav-icon">⚙️</span>
+          <span>Settings</span>
+        </li>
+      </ul>
+      <div class="sidebar-footer">
+        <span id="password-count">0 passwords saved</span>
+      </div>
+    </nav>
+
+    <!-- Main Content -->
+    <main class="main-content">
+      <!-- List View -->
+      <div id="list-view" class="view active">
+        <header class="view-header">
+          <h1>My Logins</h1>
+          <div class="search-container">
+            <input type="text" id="search-input" placeholder="Search by site name..." autocomplete="off">
+            <span class="search-icon">🔍</span>
+          </div>
+        </header>
+        <div class="password-list" id="password-list">
+          <div class="empty-state">
+            <span class="empty-icon">🔑</span>
+            <p>No passwords saved yet</p>
+            <button class="btn btn-primary" onclick="switchView('create')">Add Your First Login</button>
+          </div>
+        </div>
+      </div>
+
+      <!-- Create View -->
+      <div id="create-view" class="view">
+        <header class="view-header">
+          <h1>Create New Login</h1>
+        </header>
+        <form id="create-form" class="password-form">
+          <div class="form-group">
+            <label for="site">Website / Service</label>
+            <input type="text" id="site" placeholder="e.g., google.com, Netflix, GitHub" required>
+          </div>
+          <div class="form-row">
+            <div class="form-group">
+              <label for="username">Username</label>
+              <input type="text" id="username" placeholder="Your username">
+            </div>
+            <div class="form-group">
+              <label for="email">Email</label>
+              <input type="email" id="email" placeholder="your@email.com">
+            </div>
+          </div>
+          <div class="form-group">
+            <label for="password">Password</label>
+            <div class="password-input-group">
+              <input type="password" id="password" placeholder="Enter or generate a password" required>
+              <button type="button" class="btn btn-icon" id="toggle-password" title="Show/Hide">👁️</button>
+              <button type="button" class="btn btn-secondary" id="open-generator">Generate</button>
+            </div>
+          </div>
+          <div class="form-group">
+            <label for="notes">Notes (optional)</label>
+            <textarea id="notes" placeholder="Any additional notes..."></textarea>
+          </div>
+          <div class="form-actions">
+            <button type="submit" class="btn btn-primary btn-large">💾 Save Login</button>
+          </div>
+        </form>
+      </div>
+
+      <!-- Edit View -->
+      <div id="edit-view" class="view">
+        <header class="view-header">
+          <h1>Edit Login</h1>
+          <button class="btn btn-text" onclick="switchView('list')">← Back to List</button>
+        </header>
+        <form id="edit-form" class="password-form">
+          <input type="hidden" id="edit-id">
+          <div class="form-group">
+            <label for="edit-site">Website / Service</label>
+            <input type="text" id="edit-site" required>
+          </div>
+          <div class="form-row">
+            <div class="form-group">
+              <label for="edit-username">Username</label>
+              <input type="text" id="edit-username">
+            </div>
+            <div class="form-group">
+              <label for="edit-email">Email</label>
+              <input type="email" id="edit-email">
+            </div>
+          </div>
+          <div class="form-group">
+            <label for="edit-password">Password</label>
+            <div class="password-input-group">
+              <input type="password" id="edit-password" required>
+              <button type="button" class="btn btn-icon" id="toggle-edit-password" title="Show/Hide">👁️</button>
+              <button type="button" class="btn btn-secondary" id="open-generator-edit">Generate</button>
+            </div>
+          </div>
+          <div class="form-group">
+            <label for="edit-notes">Notes</label>
+            <textarea id="edit-notes"></textarea>
+          </div>
+          <div class="form-actions">
+            <button type="button" class="btn btn-danger" id="delete-btn">🗑️ Delete</button>
+            <button type="submit" class="btn btn-primary btn-large">💾 Update Login</button>
+          </div>
+        </form>
+      </div>
+
+      <!-- Settings View -->
+      <div id="settings-view" class="view">
+        <header class="view-header">
+          <h1>Settings</h1>
+        </header>
+        <div class="settings-container">
+          <!-- Appearance Section -->
+          <section class="settings-section">
+            <h2 class="settings-section-title">Appearance</h2>
+            <div class="settings-row">
+              <div class="settings-label">
+                <div class="settings-label-main">Theme</div>
+                <div class="settings-label-secondary">Choose your preferred color scheme</div>
+              </div>
+              <div class="settings-control">
+                <select id="theme-select" class="settings-select">
+                  <option value="dark">Dark</option>
+                  <option value="light">Light</option>
+                  <option value="system">System</option>
+                </select>
+              </div>
+            </div>
+          </section>
+
+          <!-- Security Section -->
+          <section class="settings-section">
+            <h2 class="settings-section-title">Security</h2>
+            <div class="settings-row">
+              <div class="settings-label">
+                <div class="settings-label-main">Clear Clipboard</div>
+                <div class="settings-label-secondary">Auto-clear clipboard after copying a password</div>
+              </div>
+              <div class="settings-control">
+                <select id="clipboard-clear-select" class="settings-select">
+                  <option value="0">Never</option>
+                  <option value="15">15 seconds</option>
+                  <option value="30">30 seconds</option>
+                  <option value="60">1 minute</option>
+                  <option value="120">2 minutes</option>
+                </select>
+              </div>
+            </div>
+          </section>
+
+          <!-- Hotkeys Section -->
+          <section class="settings-section">
+            <h2 class="settings-section-title">Hotkeys</h2>
+            <div class="settings-row">
+              <div class="settings-label">
+                <div class="settings-label-main">Quick Access</div>
+                <div class="settings-label-secondary">Open the password overlay from anywhere</div>
+              </div>
+              <div class="settings-control">
+                <kbd class="hotkey-display">Ctrl + Shift + P</kbd>
+              </div>
+            </div>
+          </section>
+
+          <!-- About Section -->
+          <section class="settings-section">
+            <h2 class="settings-section-title">About</h2>
+            <div class="settings-row">
+              <div class="settings-label">
+                <div class="settings-label-main">QuickPass</div>
+                <div class="settings-label-secondary">Version 2.0.0</div>
+              </div>
+            </div>
+            <div class="settings-row">
+              <div class="settings-label">
+                <div class="settings-label-main">Data Location</div>
+                <div class="settings-label-secondary" id="data-location">%APPDATA%/quick-pass</div>
+              </div>
+            </div>
+          </section>
+        </div>
+      </div>
+    </main>
+  </div>
+
+  <!-- Password Generator Modal -->
+  <div id="generator-modal" class="modal">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h2>Password Generator</h2>
+        <button class="btn btn-icon modal-close" id="close-generator">✕</button>
+      </div>
+      <div class="modal-body">
+        <div class="generator-preview">
+          <input type="text" id="generated-password" readonly>
+          <button type="button" class="btn btn-icon" id="copy-generated" title="Copy">📋</button>
+          <button type="button" class="btn btn-icon" id="refresh-password" title="Regenerate">🔄</button>
+        </div>
+
+        <div class="generator-options">
+          <div class="option-group">
+            <label>Password Length: <span id="length-value">16</span></label>
+            <input type="range" id="password-length" min="8" max="32" value="16">
+          </div>
+
+          <div class="option-group checkboxes">
+            <label class="checkbox-label">
+              <input type="checkbox" id="include-uppercase" checked>
+              <span>Uppercase (A-Z)</span>
+            </label>
+            <label class="checkbox-label">
+              <input type="checkbox" id="include-lowercase" checked>
+              <span>Lowercase (a-z)</span>
+            </label>
+            <label class="checkbox-label">
+              <input type="checkbox" id="include-numbers" checked>
+              <span>Numbers (0-9)</span>
+            </label>
+            <label class="checkbox-label">
+              <input type="checkbox" id="include-symbols" checked>
+              <span>Symbols</span>
+            </label>
+          </div>
+
+          <div class="option-group">
+            <label for="allowed-symbols">Allowed Symbols</label>
+            <input type="text" id="allowed-symbols" value="!@#$%^&*()_+-=[]{}|;:,.<>?">
+            <div class="symbol-presets">
+              <button type="button" class="btn btn-small" data-symbols="!@#$%^&*">Common</button>
+              <button type="button" class="btn btn-small" data-symbols="!@#$%^&*()_+-=">Extended</button>
+              <button type="button" class="btn btn-small" data-symbols="!@#$%^&*()_+-=[]{}|;:,.<>?">All</button>
+              <button type="button" class="btn btn-small" data-symbols="_-">Safe (underscore/dash)</button>
+            </div>
+          </div>
+
+          <div class="password-strength">
+            <label>Strength:</label>
+            <div class="strength-bar">
+              <div class="strength-fill" id="strength-fill"></div>
+            </div>
+            <span id="strength-text">Strong</span>
+          </div>
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button type="button" class="btn btn-secondary" id="cancel-generator">Cancel</button>
+        <button type="button" class="btn btn-primary" id="use-password">Use This Password</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Toast Notification -->
+  <div id="toast" class="toast">
+    <span id="toast-message"></span>
+  </div>
+
+  <script src="renderer.js"></script>
+</body>
+</html>

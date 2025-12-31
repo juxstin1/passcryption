@@ -1,0 +1,41 @@
+{
+  "name": "passcryption",
+  "version": "2.0.0",
+  "description": "Lightweight, secure desktop password manager with AES-256 encryption and global hotkey access",
+  "main": "main.js",
+  "scripts": {
+    "start": "electron .",
+    "build": "electron-builder --win portable"
+  },
+  "author": "Justin",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/juxstin1/passcryption.git"
+  },
+  "keywords": [
+    "password-manager",
+    "electron",
+    "encryption",
+    "security",
+    "aes-256"
+  ],
+  "devDependencies": {
+    "electron": "^28.0.0",
+    "electron-builder": "^24.9.1"
+  },
+  "dependencies": {
+    "crypto-js": "^4.2.0"
+  },
+  "build": {
+    "appId": "com.passcryption.app",
+    "productName": "Passcryption",
+    "directories": {
+      "output": "dist"
+    },
+    "win": {
+      "target": "portable",
+      "signAndEditExecutable": false
+    }
+  }
+}

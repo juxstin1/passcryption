@@ -1,0 +1,366 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>QuickPass</title>
+  <style>
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+
+    body {
+      font-family: 'Segoe UI', system-ui, -apple-system, sans-serif;
+      background: transparent;
+      -webkit-font-smoothing: antialiased;
+      user-select: none;
+    }
+
+    .overlay-container {
+      width: 400px;
+      max-height: 360px;
+      background: #1e293b;
+      border: 1px solid #334155;
+      border-radius: 12px;
+      box-shadow: 0 20px 50px rgba(0, 0, 0, 0.5);
+      overflow: hidden;
+      display: flex;
+      flex-direction: column;
+    }
+
+    .search-wrapper {
+      padding: 12px;
+      border-bottom: 1px solid #334155;
+    }
+
+    .search-input {
+      width: 100%;
+      padding: 12px 16px;
+      background: #0f172a;
+      border: 2px solid #475569;
+      border-radius: 8px;
+      color: #f8fafc;
+      font-size: 15px;
+      font-family: inherit;
+      outline: none;
+    }
+
+    .search-input:focus {
+      border-color: #6366f1;
+    }
+
+    .search-input::placeholder {
+      color: #64748b;
+    }
+
+    .results-list {
+      flex: 1;
+      overflow-y: auto;
+      max-height: 280px;
+    }
+
+    .results-list::-webkit-scrollbar {
+      width: 6px;
+    }
+
+    .results-list::-webkit-scrollbar-track {
+      background: transparent;
+    }
+
+    .results-list::-webkit-scrollbar-thumb {
+      background: #475569;
+      border-radius: 3px;
+    }
+
+    .result-item {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      padding: 10px 12px;
+      cursor: pointer;
+      border-bottom: 1px solid #334155;
+    }
+
+    .result-item:last-child {
+      border-bottom: none;
+    }
+
+    .result-item:hover,
+    .result-item.selected {
+      background: #334155;
+    }
+
+    .result-item.selected {
+      background: #3b4a63;
+    }
+
+    .result-icon {
+      width: 36px;
+      height: 36px;
+      background: linear-gradient(135deg, #6366f1, #4f46e5);
+      border-radius: 8px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 16px;
+      flex-shrink: 0;
+    }
+
+    .result-info {
+      flex: 1;
+      min-width: 0;
+    }
+
+    .result-site {
+      font-size: 14px;
+      font-weight: 600;
+      color: #f8fafc;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+
+    .result-user {
+      font-size: 12px;
+      color: #94a3b8;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+
+    .result-actions {
+      display: flex;
+      gap: 6px;
+      opacity: 0;
+    }
+
+    .result-item:hover .result-actions,
+    .result-item.selected .result-actions {
+      opacity: 1;
+    }
+
+    .action-btn {
+      width: 32px;
+      height: 32px;
+      border: none;
+      border-radius: 6px;
+      cursor: pointer;
+      font-size: 14px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      background: #475569;
+      color: #f8fafc;
+    }
+
+    .action-btn:hover {
+      background: #6366f1;
+    }
+
+    .action-btn.primary {
+      background: #6366f1;
+    }
+
+    .action-btn.primary:hover {
+      background: #4f46e5;
+    }
+
+    .empty-state {
+      padding: 40px 20px;
+      text-align: center;
+      color: #64748b;
+    }
+
+    .empty-icon {
+      font-size: 32px;
+      margin-bottom: 8px;
+    }
+
+    .footer-hint {
+      padding: 8px 12px;
+      background: #0f172a;
+      border-top: 1px solid #334155;
+      font-size: 11px;
+      color: #64748b;
+      display: flex;
+      gap: 12px;
+    }
+
+    .hint-item {
+      display: flex;
+      align-items: center;
+      gap: 4px;
+    }
+
+    kbd {
+      background: #334155;
+      padding: 2px 6px;
+      border-radius: 4px;
+      font-family: inherit;
+      font-size: 10px;
+    }
+  </style>
+</head>
+<body>
+  <div class="overlay-container">
+    <div class="search-wrapper">
+      <input type="text" class="search-input" id="search" placeholder="Search passwords..." autofocus>
+    </div>
+    <div class="results-list" id="results"></div>
+    <div class="footer-hint">
+      <span class="hint-item"><kbd>↑↓</kbd> Navigate</span>
+      <span class="hint-item"><kbd>Enter</kbd> Copy password</span>
+      <span class="hint-item"><kbd>Tab</kbd> Type it</span>
+      <span class="hint-item"><kbd>Esc</kbd> Close</span>
+    </div>
+  </div>
+
+  <script>
+    let passwords = [];
+    let filteredPasswords = [];
+    let selectedIndex = 0;
+
+    const searchInput = document.getElementById('search');
+    const resultsContainer = document.getElementById('results');
+
+    // Load passwords when overlay shown
+    window.overlayApi.onShown(async () => {
+      passwords = await window.overlayApi.getPasswords();
+      filteredPasswords = [...passwords];
+      selectedIndex = 0;
+      searchInput.value = '';
+      searchInput.focus();
+      renderResults();
+    });
+
+    // Search input handler
+    searchInput.addEventListener('input', () => {
+      const query = searchInput.value.toLowerCase().trim();
+
+      if (query === '') {
+        filteredPasswords = [...passwords];
+      } else {
+        filteredPasswords = passwords.filter(p =>
+          p.site.toLowerCase().includes(query) ||
+          (p.username && p.username.toLowerCase().includes(query)) ||
+          (p.email && p.email.toLowerCase().includes(query))
+        );
+      }
+
+      selectedIndex = 0;
+      renderResults();
+    });
+
+    // Keyboard navigation
+    document.addEventListener('keydown', (e) => {
+      if (e.key === 'Escape') {
+        window.overlayApi.hideOverlay();
+        return;
+      }
+
+      if (e.key === 'ArrowDown') {
+        e.preventDefault();
+        selectedIndex = Math.min(selectedIndex + 1, filteredPasswords.length - 1);
+        renderResults();
+        scrollToSelected();
+      }
+
+      if (e.key === 'ArrowUp') {
+        e.preventDefault();
+        selectedIndex = Math.max(selectedIndex - 1, 0);
+        renderResults();
+        scrollToSelected();
+      }
+
+      if (e.key === 'Enter' && filteredPasswords.length > 0) {
+        e.preventDefault();
+        copyPassword(filteredPasswords[selectedIndex]);
+      }
+
+      if (e.key === 'Tab' && filteredPasswords.length > 0) {
+        e.preventDefault();
+        typePassword(filteredPasswords[selectedIndex]);
+      }
+    });
+
+    function renderResults() {
+      if (filteredPasswords.length === 0) {
+        resultsContainer.innerHTML = `
+          <div class="empty-state">
+            <div class="empty-icon">🔍</div>
+            <div>${passwords.length === 0 ? 'No passwords saved' : 'No matches found'}</div>
+          </div>
+        `;
+        return;
+      }
+
+      resultsContainer.innerHTML = filteredPasswords.map((p, i) => `
+        <div class="result-item ${i === selectedIndex ? 'selected' : ''}" data-index="${i}">
+          <div class="result-icon">${getInitial(p.site)}</div>
+          <div class="result-info">
+            <div class="result-site">${escapeHtml(p.site)}</div>
+            <div class="result-user">${escapeHtml(p.username || p.email || '')}</div>
+          </div>
+          <div class="result-actions">
+            <button class="action-btn" onclick="copyUsername(${i})" title="Copy username">👤</button>
+            <button class="action-btn" onclick="typePassword(passwords[${i}])" title="Type password">⌨️</button>
+            <button class="action-btn primary" onclick="copyPassword(passwords[${i}])" title="Copy password">📋</button>
+          </div>
+        </div>
+      `).join('');
+
+      // Click handlers for items
+      document.querySelectorAll('.result-item').forEach((item, i) => {
+        item.addEventListener('click', (e) => {
+          if (!e.target.classList.contains('action-btn')) {
+            selectedIndex = i;
+            copyPassword(filteredPasswords[i]);
+          }
+        });
+      });
+    }
+
+    function scrollToSelected() {
+      const selected = document.querySelector('.result-item.selected');
+      if (selected) {
+        selected.scrollIntoView({ block: 'nearest' });
+      }
+    }
+
+    function getInitial(site) {
+      return site.charAt(0).toUpperCase();
+    }
+
+    function escapeHtml(text) {
+      if (!text) return '';
+      const div = document.createElement('div');
+      div.textContent = text;
+      return div.innerHTML;
+    }
+
+    async function copyPassword(entry) {
+      await window.overlayApi.copyPassword(entry.password);
+    }
+
+    async function copyUsername(index) {
+      const entry = filteredPasswords[index];
+      const username = entry.username || entry.email || '';
+      if (username) {
+        await window.overlayApi.copyUsername(username);
+      }
+    }
+
+    async function typePassword(entry) {
+      await window.overlayApi.typePassword(entry.password);
+    }
+
+    // Make functions available to inline onclick handlers
+    window.copyPassword = copyPassword;
+    window.copyUsername = copyUsername;
+    window.typePassword = typePassword;
+    window.passwords = passwords;
+  </script>
+</body>
+</html>
